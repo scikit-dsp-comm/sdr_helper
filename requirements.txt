@@ -2,3 +2,4 @@ scikit-dsp-comm
 numpy
 scipy
 pyaudio
+ipywidgets
