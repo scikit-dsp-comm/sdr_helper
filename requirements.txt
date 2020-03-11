@@ -1,0 +1,3 @@
+scikit-dsp-comm
+numpy
+scipy
