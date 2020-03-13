@@ -43,7 +43,7 @@ try:
     import colorama
 except ImportError:
     warnings.warn("Please install colorama for full functionality", ImportWarning)
-from . import pyaudio_helper as pah
+from pyaudio_helper import pyaudio_helper as pah
 import matplotlib.pyplot as plt
 
 try:
@@ -67,7 +67,7 @@ from matplotlib.mlab import psd
 # import bokeh.plotting.figure as bfigure
 # from bokeh.models.annotations import Title as bTitle
 
-class RTLSDR_stream(object):
+class RTLSDRStream(object):
     """
     Class used to set up an RTLSDR stream object
     """
@@ -107,7 +107,7 @@ class RTLSDR_stream(object):
         filter are available as parameters in the run_user_stream() method.
 
         Custom Stage 1 FIR decimation filter example:
-        >>> sdr_stream = RTLSDR_stream()
+        >>> sdr_stream = RTLSDRStream()
         >>> M1 = 10
         >>> M2 = 5
         >>> b = signal.firwin(32,2*200e3/2.4e6)
@@ -279,7 +279,7 @@ class RTLSDR_stream(object):
             self.stop()
             print('Status: Stopped')
 
-    def interactive_FM_Rx(self, fc=103.9e6, gain=40, audio_out=1, audio_buffsize=4096, audio_fs=48000):
+    def interactive_fm_rx(self, fc=103.9e6, gain=40, audio_out=1, audio_buffsize=4096, audio_fs=48000):
         '''
         Sets up interactive mono FM example
         '''
@@ -368,18 +368,15 @@ class RTLSDR_stream(object):
 
             if (self.store_rf):
                 self.store_rf = False
-                await
-                self.rf_queue.put(samples)
+                await self.rf_queue.put(samples)
 
             z = self._decimate(samples, 10, self.fs)
 
             if (self.store_stage1):
                 self.store_stage1 = False
-                await
-                self.stage1_queue.put(z)
+                await self.stage1_queue.put(z)
 
-            await
-            self.rx_data.put(z)
+            await self.rx_data.put(z)
 
     async def _process_rx_data(self):
         '''
@@ -387,8 +384,7 @@ class RTLSDR_stream(object):
         Implements an FM discriminator for the mono FM example.
         '''
         while self.keep_streaming:
-            samples = await
-            self.rx_data.get()
+            samples = await self.rx_data.get()
             samples = np.array(samples)
 
             ##############################################
@@ -397,14 +393,12 @@ class RTLSDR_stream(object):
             z_bb = self._discrim(samples)
             if (self.store_processed_stage1):
                 self.store_processed_stage1 = False
-                await
-                self.processed_stage1_queue.put(z_bb)
+                await self.processed_stage1_queue.put(z_bb)
 
             z = self._decimate(z_bb, 5, self.fs, 2)
             if (self.store_stage2):
                 self.store_stage2 = False
-                await
-                self.stage2_queue.put(z)
+                await self.stage2_queue.put(z)
 
             # Wrap circular buffer
             self._write_circ_buff(z)
@@ -442,19 +436,16 @@ class RTLSDR_stream(object):
 
             if (self.store_rf):
                 self.store_rf = False
-                await
-                self.rf_queue.put(samples)
+                await self.rf_queue.put(samples)
 
             y, self.stage1_ic = signal.lfilter(self.b, self.a, samples, zi=self.stage1_ic)
             z = ss.downsample(y, self.M1)
 
             if (self.store_stage1):
                 self.store_stage1 = False
-                await
-                self.stage1_queue.put(z)
+                await self.stage1_queue.put(z)
 
-            await
-            self.rx_data.put(z)
+            await self.rx_data.put(z)
 
     async def _process_rx_data_user(self, callback):
         '''
@@ -471,8 +462,7 @@ class RTLSDR_stream(object):
         callback: user-defined callback passed in from run_user_stream()
         '''
         while self.keep_streaming:
-            samples = await
-            self.rx_data.get()
+            samples = await self.rx_data.get()
             samples = np.array(samples)
 
             ##############################################
@@ -483,23 +473,20 @@ class RTLSDR_stream(object):
             if (self.audio_sink):
                 if (self.store_processed_stage1):
                     self.store_processed_stage1 = False
-                    await
-                    self.processed_stage1_queue.put(z_bb)
+                    await self.processed_stage1_queue.put(z_bb)
 
                 y, self.stage2_ic = signal.lfilter(self.bb, self.aa, z_bb, zi=self.stage2_ic)
                 z = ss.downsample(y, self.M2)
 
                 if (self.store_stage2):
                     self.store_stage2 = False
-                    await
-                    self.stage2_queue.put(z)
+                    await self.stage2_queue.put(z)
 
                 # Wrap circular buffer
                 self._write_circ_buff(z)
 
             else:
-                await
-                self._write_circ_buff_async(z_bb)
+                await self._write_circ_buff_async(z_bb)
 
         print(colorama.Fore.BLUE + 'Stopping SDR')
 
@@ -551,8 +538,7 @@ class RTLSDR_stream(object):
             if (not self.audio_sink):
                 # print(colorama.Fore.RED + 'Exceeded allocated output buffer space. Returning, then overwriting buffer')
                 self.buffer_exceeded = True
-                await
-                self.data_out_queue.put(self.z_out)
+                await self.data_out_queue.put(self.z_out)
             self.z_out[self.rx_idx:] = samples[:(self.rtl_buffer_size - self.rx_idx)]
             self.z_out[:abs(self.rtl_buffer_size - self.rx_idx - len(samples))] = samples[(abs(
                 self.rtl_buffer_size - self.rx_idx)):]
@@ -620,8 +606,7 @@ class RTLSDR_stream(object):
         with self.output:
             self.output.append_stdout(colorama.Fore.LIGHTBLUE_EX + 'Starting SDR and Audio Event Loop\n')
 
-        await
-        asyncio.gather(
+        await asyncio.gather(
             self._get_rx_data(),
             self._process_rx_data(),
             self._audio()
@@ -708,16 +693,14 @@ class RTLSDR_stream(object):
         print(colorama.Fore.BLACK + '')
 
         if (audio_sink):
-            await
-            asyncio.gather(
+            await asyncio.gather(
                 self._get_rx_data_user(),
                 self._process_rx_data_user(callback),
                 self._audio()
             )
         else:
             self.reset_data_out_queue()
-            await
-            asyncio.gather(
+            await asyncio.gather(
                 self._get_rx_data_user(),
                 self._process_rx_data_user(callback),
             )
@@ -766,7 +749,7 @@ class RTLSDR_stream(object):
         >>>     return z_bb,user_var
 
         method call:
-        >>> sdr_stream = RTLSDR_stream()
+        >>> sdr_stream = RTLSDRStream()
         >>> run_user_stream(callback,10,5)
 
         stop streaming:
@@ -825,8 +808,7 @@ class RTLSDR_stream(object):
         >>> sdr_stream.stop()
 
         '''
-        data_out = await
-        self.data_out_queue.get()
+        data_out = await self.data_out_queue.get()
         return data_out
 
     async def plot_rf(self, NFFT=2 ** 10, w=6, h=5):
@@ -842,7 +824,7 @@ class RTLSDR_stream(object):
         h: height of figure
 
         Example:
-        >>> sdr_stream = RTLSDR_stream()
+        >>> sdr_stream = RTLSDRStream()
         >>> sdr_stream.run_user_stream(callback,10,5)
         >>> await sdr_stream.plot_rf(1024,6,5)
 
@@ -851,8 +833,7 @@ class RTLSDR_stream(object):
         if (not self.keep_streaming):
             raise RuntimeError('No running stream. Plot cannot be awaited.')
         self.store_rf = True
-        samples = await
-        self.rf_queue.get()
+        samples = await self.rf_queue.get()
         plt.figure(figsize=(w, h))
         plt.psd(samples, NFFT, self.sdr.get_sample_rate(), self.sdr.get_center_freq())
         plt.title('PSD of RF Input')
@@ -872,7 +853,7 @@ class RTLSDR_stream(object):
         h: height of figure
 
         Example:
-        >>> sdr_stream = RTLSDR_stream()
+        >>> sdr_stream = RTLSDRStream()
         >>> sdr_stream.run_user_stream(callback,10,5)
         >>> await sdr_stream.plot_stage1(1024,6,5)
 
@@ -881,8 +862,7 @@ class RTLSDR_stream(object):
         if (not self.keep_streaming):
             raise RuntimeError('No running stream. Plot cannot be awaited.')
         self.store_stage1 = True
-        samples = await
-        self.stage1_queue.get()
+        samples = await self.stage1_queue.get()
         plt.figure(figsize=(w, h))
         plt.psd(samples, NFFT, self.sdr.get_sample_rate() / self.M1, self.sdr.get_center_freq())
         plt.title('PSD after Stage 1 Decimation')
@@ -905,7 +885,7 @@ class RTLSDR_stream(object):
         h: height of figure
 
         Example:
-        >>> sdr_stream = RTLSDR_stream()
+        >>> sdr_stream = RTLSDRStream()
         >>> sdr_stream.run_user_stream(callback,10,5)
         >>> await sdr_stream.plot_processed_stage1(1024,0,6,5)
 
@@ -914,8 +894,7 @@ class RTLSDR_stream(object):
         if (not self.keep_streaming):
             raise RuntimeError('No running stream. Plot cannot be awaited.')
         self.store_processed_stage1 = True
-        samples = await
-        self.processed_stage1_queue.get()
+        samples = await self.processed_stage1_queue.get()
         plt.figure(figsize=(w, h))
         plt.psd(samples, NFFT, self.fs / self.M1, FC)
         plt.title('PSD after Processing')
@@ -936,7 +915,7 @@ class RTLSDR_stream(object):
         h: height of figure
 
         Example:
-        >>> sdr_stream = RTLSDR_stream()
+        >>> sdr_stream = RTLSDRStream()
         >>> sdr_stream.run_user_stream(callback,10,5)
         >>> await sdr_stream.plot_processed_stage1(1024,0,6,5)
 
@@ -945,8 +924,7 @@ class RTLSDR_stream(object):
         if (not self.keep_streaming):
             raise RuntimeError('No running stream. Plot cannot be awaited.')
         self.store_stage2 = True
-        samples = await
-        self.stage2_queue.get()
+        samples = await self.stage2_queue.get()
         plt.figure(figsize=(w, h))
         plt.psd(samples, NFFT, self.fs / self.M1 / self.M2, FC)
         plt.title('PSD after Stage 2 Decimation')
@@ -966,8 +944,7 @@ class RTLSDR_stream(object):
         fig.canvas.draw()
 
         while (self.update_rf):
-            samples = await
-            self.rf_queue.get()
+            samples = await self.rf_queue.get()
             Px, f = psd(samples, self.plot_NFFT, self.fs)
             f = f + self.fc
             ax.clear()
@@ -998,8 +975,7 @@ class RTLSDR_stream(object):
         fig = bfigure(width=w, height=h, title='PSD at RF Input')
         fig.xaxis.axis_label = "Frequency (MHz)"
         fig.yaxis.axis_label = "Power Spectral Density (dB/Hz)"
-        samples = await
-        self.rf_queue.get()
+        samples = await self.rf_queue.get()
         Px, f = psd(samples, self.plot_NFFT, self.fs)
         Px = 10 * np.log10(Px * self.fs / self.plot_NFFT)
         f = (f + self.fc) / 1e6
@@ -1019,8 +995,7 @@ class RTLSDR_stream(object):
         fc_line.glyph.line_dash = [10, 5]
         target = show(fig, notebook_handle=True)
         while (self.update_rf):
-            samples = await
-            self.rf_queue.get()
+            samples = await self.rf_queue.get()
             Px, f = psd(samples, self.plot_NFFT, self.fs)
             Px = 10 * np.log10(Px * self.fs / self.plot_NFFT)
             f = (f + self.fc) / 1e6
@@ -1045,8 +1020,7 @@ class RTLSDR_stream(object):
         '''
         while (self.update_rf):
             # for i in range(0,10):
-            await
-            asyncio.sleep(1.0 / self.refresh_rate)
+            await asyncio.sleep(1.0 / self.refresh_rate)
             self.store_rf = True
         print(colorama.Fore.LIGHTBLUE_EX + 'Stopped RF PSD Stream')
 
@@ -1064,8 +1038,7 @@ class RTLSDR_stream(object):
         self.invert = invert
         loop = asyncio.get_event_loop()
 
-        await
-        asyncio.gather(
+        await asyncio.gather(
             # self._plot_rf_stream_bokeh(w,h),
             self._plot_rf_stream(w, h),
             self._update_rf_plot()
@@ -1088,7 +1061,7 @@ class RTLSDR_stream(object):
 
         Example:
         >>> %pylab widget
-        >>> sdr_stream = RTLSDR_stream()
+        >>> sdr_stream = RTLSDRStream()
         >>> sdr_stream.run_user_stream(callback,10,5)
         >>> sdr_stream.run_plot_rf_stream(1024,2,True,8,5)
 
@@ -1111,8 +1084,7 @@ class RTLSDR_stream(object):
         fig.canvas.draw()
 
         while (self.update_stage1):
-            samples = await
-            self.stage1_queue.get()
+            samples = await self.stage1_queue.get()
             Px, f = psd(samples, self.plot_NFFT, self.fs / self.M1)
             f = f + self.fc
             f = f / 1e3
@@ -1139,8 +1111,7 @@ class RTLSDR_stream(object):
         fig = bfigure(width=w, height=h, title='PSD at RF Input')
         fig.xaxis.axis_label = "Frequency (MHz)"
         fig.yaxis.axis_label = "Power Spectral Density (dB/Hz)"
-        samples = await
-        self.rf_queue.get()
+        samples = await self.rf_queue.get()
         Px, f = psd(samples, self.plot_NFFT, self.fs)
         Px = 10 * np.log10(Px * self.fs / self.plot_NFFT)
         f = (f + self.fc) / 1e6
@@ -1155,8 +1126,7 @@ class RTLSDR_stream(object):
             r.glyph.line_color = "Blue"
         self.target1 = show(fig, notebook_handle=True)
         while (self.update_rf):
-            samples = await
-            self.rf_queue.get()
+            samples = await self.rf_queue.get()
             Px, f = psd(samples, self.plot_NFFT, self.fs)
             Px = 10 * np.log10(Px * self.fs / self.plot_NFFT)
             f = (f + self.fc) / 1e6
@@ -1179,8 +1149,7 @@ class RTLSDR_stream(object):
         '''
         while (self.update_stage1):
             # for i in range(0,10):
-            await
-            asyncio.sleep(1.0 / self.refresh_rate)
+            await asyncio.sleep(1.0 / self.refresh_rate)
             self.store_stage1 = True
         print(colorama.Fore.LIGHTBLUE_EX + 'Stopped Stage 1 PSD Stream')
 
@@ -1198,8 +1167,7 @@ class RTLSDR_stream(object):
         self.invert = invert
         loop = asyncio.get_event_loop()
 
-        await
-        asyncio.gather(
+        await asyncio.gather(
             # self.plot_stage1_stream_bokeh(w,h),
             self._plot_stage1_stream(w, h),
             self._update_stage1_plot()
@@ -1222,7 +1190,7 @@ class RTLSDR_stream(object):
 
         Example:
         >>> %pylab widget
-        >>> sdr_stream = RTLSDR_stream()
+        >>> sdr_stream = RTLSDRStream()
         >>> sdr_stream.run_user_stream(callback,10,5)
         >>> sdr_stream.run_plot_stage1_stream(1024,2,True,8,5)
 
@@ -1245,8 +1213,7 @@ class RTLSDR_stream(object):
         fig.canvas.draw()
 
         while (self.update_processed_stage1):
-            samples = await
-            self.processed_stage1_queue.get()
+            samples = await self.processed_stage1_queue.get()
             Px, f = psd(samples, self.plot_NFFT, self.fs / self.M1)
             ax.clear()
             ax.grid()
@@ -1273,8 +1240,7 @@ class RTLSDR_stream(object):
         fig = bfigure(width=w, height=h, title='PSD after User Callback')
         fig.xaxis.axis_label = "Frequency (Hz)"
         fig.yaxis.axis_label = "Power Spectral Density (dB/Hz)"
-        samples = await
-        self.rf_queue.get()
+        samples = await self.rf_queue.get()
         Px, f = psd(samples, self.plot_NFFT, self.fs)
         Px = 10 * np.log10(Px * self.fs / self.plot_NFFT)
         f = (f + self.fc)
@@ -1313,8 +1279,7 @@ class RTLSDR_stream(object):
         '''
         while (self.update_processed_stage1):
             # for i in range(0,10):
-            await
-            asyncio.sleep(1.0 / self.refresh_rate)
+            await asyncio.sleep(1.0 / self.refresh_rate)
             self.store_processed_stage1 = True
         print(colorama.Fore.LIGHTBLUE_EX + 'Stopped Processed Stage 1 PSD Stream')
 
@@ -1332,8 +1297,7 @@ class RTLSDR_stream(object):
         self.invert = invert
         loop = asyncio.get_event_loop()
 
-        await
-        asyncio.gather(
+        await asyncio.gather(
             # self._plot_processed_stage1_stream_bokeh(w,h),
             self._plot_processed_stage1_stream(w, h),
             self._update_processed_stage1_plot()
@@ -1356,7 +1320,7 @@ class RTLSDR_stream(object):
 
         Example:
         >>> %pylab widget
-        >>> sdr_stream = RTLSDR_stream()
+        >>> sdr_stream = RTLSDRStream()
         >>> sdr_stream.run_user_stream(callback,10,5)
         >>> sdr_stream.run_plot_processed_stage1_stream(1024,2,True,8,5)
 
@@ -1380,8 +1344,7 @@ class RTLSDR_stream(object):
         ax.grid()
 
         while (self.update_stage2):
-            samples = await
-            self.stage2_queue.get()
+            samples = await self.stage2_queue.get()
             Px, f = psd(samples, self.plot_NFFT, self.fs / self.M1 / self.M2)
             ax.clear()
             ax.grid()
@@ -1406,8 +1369,7 @@ class RTLSDR_stream(object):
         fig = bfigure(width=w, height=h, title='PSD after Stage 2 Decimation')
         fig.xaxis.axis_label = "Frequency (Hz)"
         fig.yaxis.axis_label = "Power Spectral Density (dB/Hz)"
-        samples = await
-        self.rf_queue.get()
+        samples = await self.rf_queue.get()
         Px, f = psd(samples, self.plot_NFFT, self.fs)
         Px = 10 * np.log10(Px * self.fs / self.plot_NFFT)
         f = (f + self.fc)
@@ -1422,8 +1384,7 @@ class RTLSDR_stream(object):
             r.glyph.line_color = "Blue"
         target = show(fig, notebook_handle=True)
         while (self.update_rf):
-            samples = await
-            self.rf_queue.get()
+            samples = await self.rf_queue.get()
             Px, f = psd(samples, self.plot_NFFT, self.fs)
             Px = 10 * np.log10(Px * self.fs / self.plot_NFFT)
             f = (f + self.fc)
@@ -1446,8 +1407,7 @@ class RTLSDR_stream(object):
         '''
         while (self.update_stage2):
             # for i in range(0,10):
-            await
-            asyncio.sleep(1.0 / self.refresh_rate)
+            await asyncio.sleep(1.0 / self.refresh_rate)
             self.store_stage2 = True
         print(colorama.Fore.LIGHTBLUE_EX + 'Stopped Stage 2 PSD Stream')
 
@@ -1465,8 +1425,7 @@ class RTLSDR_stream(object):
         self.invert = invert
         loop = asyncio.get_event_loop()
 
-        await
-        asyncio.gather(
+        await asyncio.gather(
             # self._plot_stage2_stream_bokeh(w,h),
             self._plot_stage2_stream(w, h),
             self._update_stage2_plot()
@@ -1489,7 +1448,7 @@ class RTLSDR_stream(object):
 
         Example:
         >>> %pylab widget
-        >>> sdr_stream = RTLSDR_stream()
+        >>> sdr_stream = RTLSDRStream()
         >>> sdr_stream.run_user_stream(callback,10,5)
         >>> sdr_stream.run_plot_stage2_stream(1024,2,True,8,5)
 
@@ -1752,11 +1711,11 @@ class RTLSDR_stream(object):
         else:
             raise ValueError('Filter initial conditions must be list or ndarray type')
 
-    def set_NFFT(self, NFFT):
+    def set_nfft(self, nfft):
         '''
         Sets the FFT size for any running spectrum analyzer
         '''
-        self.plot_NFFT = NFFT
+        self.plot_NFFT = nfft
 
     def toggle_invert(self):
         '''
@@ -1770,13 +1729,12 @@ class RTLSDR_stream(object):
         the stage 1 decimation filter.
 
         Example:
-        >>> sdr_stream = RTLSDR_stream()
+        >>> sdr_stream = RTLSDRStream()
         >>> sdr_stream.run_user_stream(callback,10,5)
         >>> stage1_data_frame = await sdr_stream.get_stage1_frame()
         '''
         self.store_stage1 = True
-        samples = await
-        self.stage1_queue.get()
+        samples = await self.stage1_queue.get()
         return samples
 
     async def get_rf_frame(self):
@@ -1784,13 +1742,12 @@ class RTLSDR_stream(object):
         Async method that can be used to get a frame of incoming RF samples.
 
         Example:
-        >>> sdr_stream = RTLSDR_stream()
+        >>> sdr_stream = RTLSDRStream()
         >>> sdr_stream.run_user_stream(callback,10,5)
         >>> rf_data_frame = await sdr_stream.get_stage1_frame()
         '''
         self.store_rf = True
-        samples = await
-        self.rf_queue.get()
+        samples = await self.rf_queue.get()
         return samples
 
     async def get_processed_stage1_frame(self):
@@ -1799,13 +1756,12 @@ class RTLSDR_stream(object):
         the callback.
 
         Example:
-        >>> sdr_stream = RTLSDR_stream()
+        >>> sdr_stream = RTLSDRStream()
         >>> sdr_stream.run_user_stream(callback,10,5)
         >>> callback_data_frame = await sdr_stream.get_stage1_frame()
         '''
         self.store_processed_stage1 = True
-        samples = await
-        self.processed_stage1_queue.get()
+        samples = await self.processed_stage1_queue.get()
         return samples
 
     async def get_stage2_frame(self):
@@ -1814,13 +1770,12 @@ class RTLSDR_stream(object):
         the stage 2 decimation filter.
 
         Example:
-        >>> sdr_stream = RTLSDR_stream()
+        >>> sdr_stream = RTLSDRStream()
         >>> sdr_stream.run_user_stream(callback,10,5)
         >>> stage2_data_frame = await sdr_stream.get_stage2_frame()
         '''
         self.store_stage2 = True
-        samples = await
-        self.stage2_queue.get()
+        samples = await self.stage2_queue.get()
         return samples
 
     def get_center_freq(self):
