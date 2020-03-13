@@ -39,10 +39,6 @@ import numpy as np
 import scipy.signal as signal
 import asyncio
 
-try:
-    import colorama
-except ImportError:
-    warnings.warn("Please install colorama for full functionality", ImportWarning)
 from pyaudio_helper import pyaudio_helper as pah
 import matplotlib.pyplot as plt
 
