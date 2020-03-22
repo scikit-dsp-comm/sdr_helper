@@ -39,5 +39,6 @@ setup(name='sdr-helper',
       tests_require=['nose','numpy', 'tox'],
       extras_require={
             'rtlsdr': ['pyrtlsdr']
-      }
+      },
+      python_requires = '>=3.5',
      )
