@@ -38,7 +38,7 @@ from sk_dsp_comm import sigsys as ss
 import numpy as np
 import scipy.signal as signal
 import asyncio
-
+import colorama
 from pyaudio_helper import pyaudio_helper as pah
 import matplotlib.pyplot as plt
 
@@ -144,7 +144,7 @@ class RTLSDRStream(object):
 
         Custom Stage 2 IIR Filter:
         >>> import sk_dsp_comm.iir_design_helper as iir_d
-        >>> sdr_stream = RTLSDR_Stream()
+        >>> sdr_stream = RTLSDRStream()
         >>> M1 = 10
         >>> M2 = 5
         >>> fc2 = 15e3
@@ -235,7 +235,7 @@ class RTLSDRStream(object):
         self.sdr.set_gain(gain)
 
         # Audio
-        self.DSP_IO = pah.DSP_io_stream(self._audio_callback, self.audio_in, self.audio_out, self.audio_buffsize,
+        self.DSP_IO = pah.DSPIOStream(self._audio_callback, self.audio_in, self.audio_out, self.audio_buffsize,
                                         self.audio_fs, 0, 0)
 
         # Async Queues/Plotting
@@ -263,11 +263,11 @@ class RTLSDRStream(object):
         self.invert = False
         # output_notebook()
 
-    def _interaction(self, Stream):
+    def _interaction(self, stream):
         '''
         Enables Jupyter Widgets for mono FM example
         '''
-        if (Stream == 'Start Streaming'):
+        if (stream == 'Start Streaming'):
             self.clear_buffer()
             task = asyncio.create_task(self._start_streaming())
             print('Status: Streaming')
@@ -593,7 +593,7 @@ class RTLSDRStream(object):
         '''
         self.rx_data = asyncio.Queue()
         self.clear_buffer()
-        self.DSP_IO = pah.DSP_io_stream(self._audio_callback, self.audio_in, self.audio_out, self.audio_buffsize,
+        self.DSP_IO = pah.DSPIOStream(self._audio_callback, self.audio_in, self.audio_out, self.audio_buffsize,
                                         self.audio_fs, 0, 0)
         self.keep_streaming = True
 
@@ -608,7 +608,7 @@ class RTLSDRStream(object):
             self._audio()
         )
 
-    async def _start_user_stream(self, callback, M1, M2, b, a, stage1_ic, bb, aa, stage2_ic, audio_sink, user_var):
+    async def _start_user_stream(self, callback, m1, m2, b, a, stage1_ic, bb, aa, stage2_ic, audio_sink, user_var):
         '''
         Async method used by run_user_stream method to start a coroutine running all of the
         different async stages in the chain. 
@@ -669,11 +669,11 @@ class RTLSDRStream(object):
         self.audio_sink = audio_sink
         self.rx_data = asyncio.Queue()
         self.clear_buffer()
-        self.DSP_IO = pah.DSP_io_stream(self._audio_callback, self.audio_in, self.audio_out, self.audio_buffsize,
+        self.DSP_IO = pah.DSPIOStream(self._audio_callback, self.audio_in, self.audio_out, self.audio_buffsize,
                                         self.audio_fs, 0, 0)
         self.keep_streaming = True
-        self.M1 = M1
-        self.M2 = M2
+        self.M1 = m1
+        self.M2 = m2
         if (user_var is not None):
             self.user_var = user_var
         if (int(self.fs / self.M1 / self.M2) != int(self.audio_fs) and audio_sink):
@@ -701,7 +701,7 @@ class RTLSDRStream(object):
                 self._process_rx_data_user(callback),
             )
 
-    def run_user_stream(self, callback, M1, M2, b=False, stage1_ic=False, a=False, bb=False, stage2_ic=False, aa=False,
+    def run_user_stream(self, callback, m1, m2, b=False, stage1_ic=False, a=False, bb=False, stage2_ic=False, aa=False,
                         audio_sink=True, user_var=None):
         '''
         Starts a user stream. A user stream follows the flow diagram in the 
@@ -753,7 +753,7 @@ class RTLSDRStream(object):
 
         '''
         task = asyncio.create_task(
-            self._start_user_stream(callback, M1, M2, b, a, stage1_ic, bb, aa, stage2_ic, audio_sink, user_var))
+            self._start_user_stream(callback, m1, m2, b, a, stage1_ic, bb, aa, stage2_ic, audio_sink, user_var))
 
     async def get_data_out_async(self):
         '''
@@ -807,7 +807,7 @@ class RTLSDRStream(object):
         data_out = await self.data_out_queue.get()
         return data_out
 
-    async def plot_rf(self, NFFT=2 ** 10, w=6, h=5):
+    async def plot_rf(self, nfft=2 ** 10, w=6, h=5):
         '''
         Async method that can be used to plot the PSD of a frame of incoming 
         samples from the SDR. This essentially acts as a power spectrum "probe" 
@@ -831,11 +831,11 @@ class RTLSDRStream(object):
         self.store_rf = True
         samples = await self.rf_queue.get()
         plt.figure(figsize=(w, h))
-        plt.psd(samples, NFFT, self.sdr.get_sample_rate(), self.sdr.get_center_freq())
+        plt.psd(samples, nfft, self.sdr.get_sample_rate(), self.sdr.get_center_freq())
         plt.title('PSD of RF Input')
         plt.show()
 
-    async def plot_stage1(self, NFFT=2 ** 10, w=6, h=5):
+    async def plot_stage1(self, nfft=2 ** 10, w=6, h=5):
         '''
         Async method that can be used to plot the PSD of a frame of decimated 
         samples from the SDR. This essentially acts as a power spectrum "probe" 
@@ -860,11 +860,11 @@ class RTLSDRStream(object):
         self.store_stage1 = True
         samples = await self.stage1_queue.get()
         plt.figure(figsize=(w, h))
-        plt.psd(samples, NFFT, self.sdr.get_sample_rate() / self.M1, self.sdr.get_center_freq())
+        plt.psd(samples, nfft, self.sdr.get_sample_rate() / self.M1, self.sdr.get_center_freq())
         plt.title('PSD after Stage 1 Decimation')
         plt.show()
 
-    async def plot_processed_stage1(self, NFFT=2 ** 10, FC=0, w=6, h=5):
+    async def plot_processed_stage1(self, nfft=2 ** 10, fc=0, w=6, h=5):
         '''
         Async method that can be used to plot the PSD of a frame of 
         decimated and processed samples from the SDR. This essentially 
@@ -892,11 +892,11 @@ class RTLSDRStream(object):
         self.store_processed_stage1 = True
         samples = await self.processed_stage1_queue.get()
         plt.figure(figsize=(w, h))
-        plt.psd(samples, NFFT, self.fs / self.M1, FC)
+        plt.psd(samples, nfft, self.fs / self.M1, fc)
         plt.title('PSD after Processing')
         plt.show()
 
-    async def plot_stage2(self, NFFT=2 ** 10, FC=0, w=6, h=5):
+    async def plot_stage2(self, nfft=2 ** 10, fc=0, w=6, h=5):
         '''
         Async method that can be used to plot the PSD of a frame of data 
         after the stage 2 decimator. This essentially acts as a power 
@@ -922,7 +922,7 @@ class RTLSDRStream(object):
         self.store_stage2 = True
         samples = await self.stage2_queue.get()
         plt.figure(figsize=(w, h))
-        plt.psd(samples, NFFT, self.fs / self.M1 / self.M2, FC)
+        plt.psd(samples, nfft, self.fs / self.M1 / self.M2, fc)
         plt.title('PSD after Stage 2 Decimation')
         plt.show()
 
@@ -1020,7 +1020,7 @@ class RTLSDRStream(object):
             self.store_rf = True
         print(colorama.Fore.LIGHTBLUE_EX + 'Stopped RF PSD Stream')
 
-    async def _start_plot_rf_stream(self, NFFT, refresh_rate, invert, w, h):
+    async def _start_plot_rf_stream(self, nfft, refresh_rate, invert, w, h):
         '''
         Private method used to initialize and start the RF spectrum analyzer.
         '''
@@ -1030,7 +1030,7 @@ class RTLSDRStream(object):
         self.stop_all_plots()
         self.update_rf = True
         self.refresh_rate = refresh_rate
-        self.plot_NFFT = NFFT
+        self.plot_NFFT = nfft
         self.invert = invert
         loop = asyncio.get_event_loop()
 
@@ -1040,7 +1040,7 @@ class RTLSDRStream(object):
             self._update_rf_plot()
         )
 
-    def run_plot_rf_stream(self, NFFT=2 ** 10, refresh_rate=2, invert=True, w=8, h=5):
+    def run_plot_rf_stream(self, nfft=2 ** 10, refresh_rate=2, invert=True, w=8, h=5):
         '''
         This method can be used to instantiate a spectrum analyzer of the RF input
         during a stream. Call the stop_plot_rf_plot method in order to stop the 
@@ -1065,7 +1065,7 @@ class RTLSDRStream(object):
         >>> sdr_stream.stop()
 
         '''
-        task = asyncio.create_task(self._start_plot_rf_stream(NFFT, refresh_rate, invert, w, h))
+        task = asyncio.create_task(self._start_plot_rf_stream(nfft, refresh_rate, invert, w, h))
 
     async def _plot_stage1_stream(self, w, h):
         '''
@@ -1149,7 +1149,7 @@ class RTLSDRStream(object):
             self.store_stage1 = True
         print(colorama.Fore.LIGHTBLUE_EX + 'Stopped Stage 1 PSD Stream')
 
-    async def _start_plot_stage1_stream(self, NFFT, refresh_rate, invert, w, h):
+    async def _start_plot_stage1_stream(self, nfft, refresh_rate, invert, w, h):
         '''
         Private method used to initialize and start the stage 1 spectrum analyzer.
         '''
@@ -1159,7 +1159,7 @@ class RTLSDRStream(object):
         self.stop_all_plots()
         self.update_stage1 = True
         self.refresh_rate = refresh_rate
-        self.plot_NFFT = NFFT
+        self.plot_NFFT = nfft
         self.invert = invert
         loop = asyncio.get_event_loop()
 
@@ -1169,7 +1169,7 @@ class RTLSDRStream(object):
             self._update_stage1_plot()
         )
 
-    def run_plot_stage1_stream(self, NFFT=2 ** 10, refresh_rate=2, invert=True, w=8, h=5):
+    def run_plot_stage1_stream(self, nfft=2 ** 10, refresh_rate=2, invert=True, w=8, h=5):
         '''
         This method can be used to instantiate a spectrum analyzer after stage 1
         during a stream. Call the stop_plot_rf_plot method in order to stop the 
@@ -1194,7 +1194,7 @@ class RTLSDRStream(object):
         >>> sdr_stream.stop()
 
         '''
-        task = asyncio.create_task(self._start_plot_stage1_stream(NFFT, refresh_rate, invert, w, h))
+        task = asyncio.create_task(self._start_plot_stage1_stream(nfft, refresh_rate, invert, w, h))
 
     async def _plot_processed_stage1_stream(self, w, h):
         '''
@@ -1279,7 +1279,7 @@ class RTLSDRStream(object):
             self.store_processed_stage1 = True
         print(colorama.Fore.LIGHTBLUE_EX + 'Stopped Processed Stage 1 PSD Stream')
 
-    async def _start_plot_processed_stage1_stream(self, NFFT, refresh_rate, invert, w, h):
+    async def _start_plot_processed_stage1_stream(self, nfft, refresh_rate, invert, w, h):
         '''
         Private method used to initialize and start the callback spectrum analyzer.
         '''
@@ -1289,7 +1289,7 @@ class RTLSDRStream(object):
         self.stop_all_plots()
         self.update_processed_stage1 = True
         self.refresh_rate = refresh_rate
-        self.plot_NFFT = NFFT
+        self.plot_NFFT = nfft
         self.invert = invert
         loop = asyncio.get_event_loop()
 
@@ -1299,7 +1299,7 @@ class RTLSDRStream(object):
             self._update_processed_stage1_plot()
         )
 
-    def run_plot_processed_stage1_stream(self, NFFT=2 ** 10, refresh_rate=2, invert=True, w=8, h=5):
+    def run_plot_processed_stage1_stream(self, nfft=2 ** 10, refresh_rate=2, invert=True, w=8, h=5):
         '''
         This method can be used to instantiate a spectrum analyzer after the callback
         during a stream. Call the stop_plot_rf_plot method in order to stop the 
@@ -1324,7 +1324,7 @@ class RTLSDRStream(object):
         >>> sdr_stream.stop()
 
         '''
-        task = asyncio.create_task(self._start_plot_processed_stage1_stream(NFFT, refresh_rate, invert, w, h))
+        task = asyncio.create_task(self._start_plot_processed_stage1_stream(nfft, refresh_rate, invert, w, h))
 
     async def _plot_stage2_stream(self, w, h):
         '''
@@ -1509,7 +1509,7 @@ class RTLSDRStream(object):
         '''
         self.output.clear_output()
 
-    def _decimate(self, x, M, fs=2.4e6, stage=1):
+    def _decimate(self, x, m, fs=2.4e6, stage=1):
         '''
         Private method used to decimate a signal for the Mono FM Receiver Example
         '''
@@ -1518,7 +1518,7 @@ class RTLSDRStream(object):
             y, self.stage1_ic = signal.lfilter(self.b, self.a, x, zi=self.stage1_ic)
         else:
             y, self.stage2_ic = signal.lfilter(self.bb, self.a, x, zi=self.stage2_ic)
-        z = ss.downsample(y, M)
+        z = ss.downsample(y, m)
         return z
 
     def _discrim(self, x):
