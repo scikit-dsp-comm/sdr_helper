@@ -19,7 +19,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 about = {}
-with codecs.open(os.path.join(here, 'sdr_helper', '__version__.py'), encoding='utf-8') as f:
+with codecs.open(os.path.join(here, 'sk_dsp_comm', 'sdr_helper', '__version__.py'), encoding='utf-8') as f:
     exec(f.read(), about)
 
 setup(name='sdr-helper',
@@ -29,9 +29,10 @@ setup(name='sdr-helper',
       long_description_content_type="text/markdown",
       author='Mark Wickert',
       author_email='mwickert@uccs.edu',
+      maintainer='Chiranth Siddappa',
+      maintainer_email='chiranthsiddappa@gmail.com',
       url='https://github.com/scikit-dsp-comm/sdr_helper',
-      package_dir={'sdr_helper': 'sdr_helper'},
-      packages=['sdr_helper'],
+      packages=['sk_dsp_comm.sdr_helper'],
       license='BSD',
       install_requires=requirements.split(),
       test_suite='nose.collector',
