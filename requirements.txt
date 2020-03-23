@@ -1,0 +1,6 @@
+colorama
+scikit-dsp-comm
+numpy
+scipy
+pyaudio
+pyaudio-helper
