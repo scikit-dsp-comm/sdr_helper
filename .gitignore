@@ -50,6 +50,7 @@ coverage.xml
 *.py,cover
 .hypothesis/
 .pytest_cache/
+.coveralls.yml
 
 # Translations
 *.mo
@@ -70,6 +71,7 @@ instance/
 
 # Sphinx documentation
 docs/_build/
+docs/source/readme.md
 
 # PyBuilder
 target/
@@ -127,6 +129,4 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
-
-#idea files
-.idea/*
+.idea*

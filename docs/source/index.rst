@@ -6,6 +6,12 @@
 Welcome to sdr-helper's documentation!
 ======================================
 
+Readme
+------
+
+.. toctree::
+   readme.md
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
