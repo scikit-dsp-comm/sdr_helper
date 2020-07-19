@@ -3,4 +3,4 @@ scikit-dsp-comm
 numpy
 scipy
 pyaudio
-pyaudio-helper>=1.0.1
+pyaudio-helper
