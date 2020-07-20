@@ -15,7 +15,7 @@ log = getLogger(__name__)
 import os
 import sys
 sys.path.insert(0, os.path.abspath('.'))
-sys.path.insert(0, os.path.abspath('../../sk_dsp_comm/sdr_helper'))
+sys.path.insert(0, os.path.abspath('../../sk_dsp_comm/sdr_helper/'))
 try:
     os.symlink('../../README.md', 'readme.md')
 except FileExistsError as fee:
@@ -35,6 +35,7 @@ author = 'Mark Wickert, Andrew Smit'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
+    'autoapi.extension',
     'nbsphinx',
     'numpydoc',
     'recommonmark',
@@ -45,6 +46,11 @@ extensions = [
 ]
 
 master_doc = 'index'
+
+# -- AutoAPI docs
+
+autoapi_dirs = ['../../sk_dsp_comm']
+
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
