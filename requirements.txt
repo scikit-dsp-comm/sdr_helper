@@ -4,3 +4,4 @@ numpy
 scipy
 pyaudio
 pyaudio-helper
+setuptools>=40.1.0
