@@ -39,7 +39,7 @@ import numpy as np
 import scipy.signal as signal
 import asyncio
 import colorama
-from pyaudio_helper import pyaudio_helper as pah
+from sk_dsp_comm.pyaudio_helper import pyaudio_helper as pah
 import matplotlib.pyplot as plt
 
 try:

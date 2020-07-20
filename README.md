@@ -1,5 +1,8 @@
 # sdr_helper
 
+[![pypi](https://img.shields.io/pypi/v/sdr-helper.svg)](https://pypi.python.org/pypi/sdr-helper)
+[![Docs](https://readthedocs.org/projects/sdr-helper/badge/?version=latest)](http://sdr-helper.readthedocs.io/en/latest/?badge=latest)
+
 ## Software Defined Radio Streaming to `rtlsdr_helper` with Interface to `pyaudio_helper`
 A recent push to the master branch now allows real-time SDR streaming from the RTL-SDR to `pyaudio_helper`.
 
