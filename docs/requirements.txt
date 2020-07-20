@@ -3,4 +3,7 @@ numpydoc
 jupyter_sphinx
 recommonmark
 Sphinx
+sphinx-autoapi
 scikit-dsp-comm
+# hw packages
+pyrtlsdr
