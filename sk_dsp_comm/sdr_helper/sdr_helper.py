@@ -1,5 +1,5 @@
-from sk_dsp_comm import sigsys as ss
-from sk_dsp_comm import digitalcom as dc
+import sk_dsp_comm.sigsys as ss
+import sk_dsp_comm.digitalcom as dc
 import numpy as np
 import scipy.signal as signal
 

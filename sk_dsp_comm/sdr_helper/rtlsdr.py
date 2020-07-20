@@ -39,7 +39,7 @@ import numpy as np
 import scipy.signal as signal
 import asyncio
 import colorama
-from pyaudio_helper import pyaudio_helper as pah
+from sk_dsp_comm.pyaudio_helper import pyaudio_helper as pah
 import matplotlib.pyplot as plt
 
 try:
@@ -1251,8 +1251,7 @@ class RTLSDRStream(object):
             r.glyph.line_color = "Blue"
         self.target2 = show(fig, notebook_handle=True)
         while (self.update_rf):
-            samples = await
-            self.rf_queue.get()
+            samples = await self.rf_queue.get()
             Px, f = psd(samples, self.plot_NFFT, self.fs)
             Px = 10 * np.log10(Px * self.fs / self.plot_NFFT)
             f = (f + self.fc)

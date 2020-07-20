@@ -1,0 +1,6 @@
+nbsphinx
+numpydoc
+jupyter_sphinx
+recommonmark
+Sphinx
+scikit-dsp-comm
