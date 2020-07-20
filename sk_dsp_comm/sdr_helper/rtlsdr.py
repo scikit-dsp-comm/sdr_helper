@@ -34,6 +34,9 @@ try:
     from rtlsdr import RtlSdr
 except ImportError:
     warnings.warn("Please install the helpers extras for full functionality", ImportWarning)
+except AttributeError as ae:
+    warnings.warn(str(ae))
+    warnings.warn("Could not import RtlSdr", ImportWarning)
 from sk_dsp_comm import sigsys as ss
 import numpy as np
 import scipy.signal as signal
