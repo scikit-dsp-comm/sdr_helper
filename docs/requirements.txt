@@ -2,7 +2,7 @@ nbsphinx
 numpydoc
 jupyter_sphinx
 recommonmark
-Sphinx
+Sphinx>=7.1.0,<8.0.0
 sphinx-autoapi
 scikit-dsp-comm
 # hw packages
