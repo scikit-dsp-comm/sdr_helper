@@ -45,6 +45,8 @@ extensions = [
     'sphinx.ext.mathjax',
 ]
 
+source_suffix = ['.rst', '.md']
+
 master_doc = 'index'
 
 # -- AutoAPI docs
